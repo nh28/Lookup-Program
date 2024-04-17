@@ -36,7 +36,7 @@ class ARKEON:
             logging.error('Unable to establish connection, due to: %s', error.message)
             return False
         
-    def get_dataframe(self):
+    def get_dataframe(self, column_name, from_section):
         """
         Turn the SQL query into a DataFrame
 
@@ -47,12 +47,11 @@ class ARKEON:
         pd.DataFrame(rows, columns = column_headers): A DataFrame of the normals query
         """
         
-        query =\
-        '''
+        query = f'''
         SELECT
-            *
+            {column_name}
         FROM
-            NORMALS_WMO_9120.normals_data       
+            {from_section}     
         '''
 
         cursor = self.connection.cursor()
@@ -68,13 +67,39 @@ class ARKEON:
             logging.info('Query execution complete.')
         else:
             logging.error('Unable to execute query, due to: no cursor.')
-        
-        column_headers = [desc[0] for desc in cursor.description]
-        rows = []
-        for row in cursor:
-            rows.append(row)
             
+        rows = [row[0] for row in cursor.fetchall()]
         cursor.close()
         logging.info('Cursor closed.')
 
-        return pd.DataFrame(rows, columns = column_headers)
+        return pd.DataFrame({column_name: rows})
+    
+    def get_all_stations(self):
+        all_stations = []
+        stations_1981 = self.get_dataframe('eng_stn_name', 'ECODAT.STATION_INFORMATION')
+        # ADD THE OTHER YEARS
+        # Question: will stations with same id potentially have different names?
+        for row in stations_1981.values:
+            for value in row:
+                if value != None and value not in all_stations:
+                    all_stations.append(value)
+        #put in alphabetical order
+        return all_stations
+    
+    def get_all_elements(self):
+        all_elements = []
+        elements_1971 = self.get_dataframe('e_normal_element_name', 'NORMALS.valid_normals_elements')
+        elements_1981 = self.get_dataframe('e_normal_element_name', 'NORMALS_1981.valid_normals_elements')
+        # add 1991
+
+        for row in elements_1971.values:
+            for value in row:
+                if value != None and value not in all_elements:
+                    all_elements.append(value)
+        
+        for row in elements_1981.values:
+            for value in row:
+                if value != None and value not in all_elements:
+                    all_elements.append(value)
+        
+        return all_elements

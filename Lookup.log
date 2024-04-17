@@ -1,0 +1,27 @@
+2024-04-17 11:24:47,349 - INFO - Executing query...
+2024-04-17 11:24:47,349 - INFO - 
+        SELECT
+            eng_stn_name
+        FROM
+            ECODAT.STATION_INFORMATION     
+        
+2024-04-17 11:24:47,380 - INFO - Query execution complete.
+2024-04-17 11:24:49,857 - INFO - Cursor closed.
+2024-04-17 11:24:50,744 - INFO - Executing query...
+2024-04-17 11:24:50,745 - INFO - 
+        SELECT
+            e_normal_element_name
+        FROM
+            NORMALS.valid_normals_elements     
+        
+2024-04-17 11:24:50,759 - INFO - Query execution complete.
+2024-04-17 11:24:50,792 - INFO - Cursor closed.
+2024-04-17 11:24:50,792 - INFO - Executing query...
+2024-04-17 11:24:50,792 - INFO - 
+        SELECT
+            e_normal_element_name
+        FROM
+            NORMALS_1981.valid_normals_elements     
+        
+2024-04-17 11:24:50,807 - INFO - Query execution complete.
+2024-04-17 11:24:50,837 - INFO - Cursor closed.
