@@ -1,6 +1,7 @@
 import oracledb
 import pandas as pd
 import logging
+import openpyxl
 
 class ARKEON:
     def __init__(self):
@@ -9,6 +10,11 @@ class ARKEON:
         self.ARKEON_port = '1521'
         self.ARKEON_service = 'archive.cmc.ec.gc.ca'
         self.connection = None
+        try:
+            self.workbook = openpyxl.load_workbook('StationList.xlsx')
+            self.worksheet = self.workbook["Sheet1"]
+        except Exception as e:
+            print(e)
         
     def connect(self, usern, passw):
         """
@@ -36,23 +42,21 @@ class ARKEON:
             logging.error('Unable to establish connection, due to: %s', error.message)
             return False
         
-    def get_dataframe(self, column_name, from_section):
+    def get_dataframe(self, column_names, from_section, where_section, where_used):
         """
         Turn the SQL query into a DataFrame
 
         Parameters:
-        None
+        
 
         Returns:
-        pd.DataFrame(rows, columns = column_headers): A DataFrame of the normals query
         """
-        
-        query = f'''
-        SELECT
-            {column_name}
-        FROM
-            {from_section}     
-        '''
+        select_clause = f'SELECT {", ".join(column_names)} FROM {from_section}'
+        where_clause = ''
+        if where_used:
+            where_clause = f'WHERE {" AND ".join(where_section)}'
+
+        query = f'{select_clause} {where_clause}'
 
         cursor = self.connection.cursor()
 
@@ -61,6 +65,7 @@ class ARKEON:
             logging.info(query)
             try:
                 cursor.execute(query)
+                rows = cursor.fetchall()
             except Exception as err:
                 msg = 'Unable to execute query, due to: %s' % str(err)
                 logging.error(msg)
@@ -68,29 +73,47 @@ class ARKEON:
         else:
             logging.error('Unable to execute query, due to: no cursor.')
             
-        rows = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        logging.info('Cursor closed.')
+        columns_data = {}
+        for i, column_name in enumerate(column_names):
+            columns_data[column_name] = [row[i] for row in rows]
 
-        return pd.DataFrame({column_name: rows})
+        return pd.DataFrame(columns_data)
     
+    def get_normals_element_id(self, element):
+        normals = self.get_dataframe(['NORMAL_ID', 'E_NORMAL_ELEMENT_NAME'], 'NORMALS_1991.valid_normals_elements', [], False)
+
+        for index, row in normals.iterrows():
+            if element in row['E_NORMAL_ELEMENT_NAME']:
+                return row['NORMAL_ID']
+        return -1
+    
+    def get_extreme_el(self):
+        all_el = self.get_all_elements()
+        extremes = []
+        for value in all_el:
+            if "extreme" in value.lower():
+                extremes.append(value)
+        return extremes
+
     def get_all_stations(self):
         all_stations = []
-        stations_1981 = self.get_dataframe('eng_stn_name', 'ECODAT.STATION_INFORMATION')
-        # ADD THE OTHER YEARS
-        # Question: will stations with same id potentially have different names?
-        for row in stations_1981.values:
-            for value in row:
-                if value != None and value not in all_stations:
-                    all_stations.append(value)
-        #put in alphabetical order
-        return all_stations
+        for row_idx in range(2, self.worksheet.max_row):
+            name_71 = self.worksheet.cell(row = row_idx, column = 1).value
+            name_81 = self.worksheet.cell(row = row_idx, column = 4).value
+            name_91 = self.worksheet.cell(row = row_idx, column = 7).value
+            if name_71 != None and name_71 not in all_stations:
+                all_stations.append(name_71)
+            if name_81 != None and name_81 not in all_stations:
+                all_stations.append(name_81)
+            if name_91 != None and name_91 not in all_stations:
+                all_stations.append(name_91)
+        return sorted(all_stations)
     
     def get_all_elements(self):
         all_elements = []
-        elements_1971 = self.get_dataframe('e_normal_element_name', 'NORMALS.valid_normals_elements')
-        elements_1981 = self.get_dataframe('e_normal_element_name', 'NORMALS_1981.valid_normals_elements')
-        # add 1991
+        elements_1971 = self.get_dataframe(['e_normal_element_name'], 'NORMALS.valid_normals_elements', [], False) 
+        elements_1981 = self.get_dataframe(['e_normal_element_name'], 'NORMALS_1981.valid_normals_elements', [], False)
+        elements_1991 = self.get_dataframe(['e_normal_element_name'], 'NORMALS_1991.valid_normals_elements', [], False)
 
         for row in elements_1971.values:
             for value in row:
@@ -102,4 +125,9 @@ class ARKEON:
                 if value != None and value not in all_elements:
                     all_elements.append(value)
         
-        return all_elements
+        for row in elements_1991.values:
+            for value in row:
+                if value != None and value not in all_elements:
+                    all_elements.append(value)
+        
+        return sorted(all_elements)
