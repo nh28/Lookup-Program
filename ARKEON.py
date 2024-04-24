@@ -57,6 +57,7 @@ class ARKEON:
             where_clause = f'WHERE {" AND ".join(where_section)}'
 
         query = f'{select_clause} {where_clause}'
+        print(query)
 
         cursor = self.connection.cursor()
 
@@ -97,15 +98,12 @@ class ARKEON:
 
     def get_all_stations(self):
         all_stations = []
-        for row_idx in range(2, self.worksheet.max_row):
-            name_71 = self.worksheet.cell(row = row_idx, column = 1).value
-            name_81 = self.worksheet.cell(row = row_idx, column = 4).value
+        for row_idx in range(3, self.worksheet.max_row):
+            name_7181 = self.worksheet.cell(row = row_idx, column = 2).value
             name_91 = self.worksheet.cell(row = row_idx, column = 7).value
-            if name_71 != None and name_71 not in all_stations:
-                all_stations.append(name_71)
-            if name_81 != None and name_81 not in all_stations:
-                all_stations.append(name_81)
-            if name_91 != None and name_91 not in all_stations:
+            if name_7181 != None and name_7181 != "" and name_7181 not in all_stations:
+                all_stations.append(name_7181)
+            if name_91 != None and name_91 != "" and name_91 not in all_stations:
                 all_stations.append(name_91)
         return sorted(all_stations)
     

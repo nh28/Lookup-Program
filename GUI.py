@@ -111,20 +111,24 @@ if login:
                 window['-ELEMENT_NAMES-'].update(set_to_index=list(range(len(user_elements))))
                 window['-MONTHS-'].update(set_to_index=list(range(len(user_months))))
 
-                while True:
+                window_open = True
+                while window_open:
                     event, values = window.read()
                     if event == gui.WINDOW_CLOSED:
                         window.close()
+                        window_open = False
                         break
                     if event == "-BACK-":
                         window.close()
+                        window_open = False
                         selection_window = create_selection_window()
                     if event == '-ELEMENT_NAMES-' or '-MONTHS-': 
                         filter_el = values['-ELEMENT_NAMES-']
                         filter_mo = values['-MONTHS-']
                         filtered_df = df[df['ELEMENT NAME'].isin(filter_el)]
                         filtered_df = filtered_df[filtered_df['Month'].isin(filter_mo)]
-                        window['-TABLE-'].update(values=filtered_df.values.tolist())
+                        if window_open:
+                            window['-TABLE-'].update(values=filtered_df.values.tolist())
                     if event == "-CSV-":
                         name = user_station + ".csv"
                         csv_file_path = os.path.join(downloads_folder, name)
