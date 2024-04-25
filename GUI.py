@@ -6,6 +6,15 @@ from ARKEON import ARKEON
 from Table import Table
 
 def create_selection_window():
+    """
+    Creates the window were the user can select the station, elements, and months.
+
+    Parameters: 
+    None
+
+    Returns:
+    A window element for the selection window.
+    """
     selection_layout = [[gui.Text('Select a station:')],
             [gui.InputText(key="-STATION_INPUT-", enable_events=True)],
             [gui.Listbox(values=all_stations, size=(60, 7), enable_events=True, key='-STATION-', select_mode='single')],

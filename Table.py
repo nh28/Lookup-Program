@@ -1,8 +1,18 @@
+import logging
 import pandas as pd
 import openpyxl
 
 class Table:
     def __init__(self, arkeon, user_station, user_elements, user_months):
+        """
+        Initialize a new instance of Table.
+
+        Parameters:
+        arkeon: An instance of the ARKEON object to be able to query data.
+        user_station: The station name that the user selected.
+        user_elements: A list of elements that the user selected.
+        user_months: A list of months that the user selected.
+        """
         self.headers = ['STN ID', 'STN/LOC NAME', 'CLIMATE ID', 'PROV', 'NORMAL ID', 'ELEMENT NAME', 'Month', '1971-2000', 'Value (71)', 'Code (71)', 'Date (71)', '1981-2010', 'Value (81)', 'Code (81)', 'Date (81)','1991-2020', 'Value (91)', 'Code (91)', 'Date (91)']
         self.arkeon = arkeon
         self.user_station = user_station
@@ -13,9 +23,19 @@ class Table:
             self.workbook = openpyxl.load_workbook('StationList.xlsx')
             self.worksheet = self.workbook["Sheet1"]
         except Exception as e:
+            logging.error("Unable to find StationList.xlsx with Sheet1")
             print(e)
 
     def check_station_availability(self):
+        """
+        Finds the index in StationList.xlsx of the station that the user selected.
+
+        Parameters:
+        None
+
+        Returns:
+        row_idx: The index of the station list, and returns None if the station is not found.
+        """
         for row_idx in range(2, self.worksheet.max_row):
             name_7181 = self.worksheet.cell(row = row_idx, column = 2).value
             name_91 = self.worksheet.cell(row = row_idx, column = 7).value
@@ -24,6 +44,16 @@ class Table:
         return None
 
     def format(self, extreme, df):
+        """
+        Formats the data based on the dataframe and if the element is an extreme element.
+
+        Parameters:
+        extreme: True if the given element is an extreme element.
+        df: A dataframe that contains the data based on station, element, and month
+
+        Returns:
+        A formatted list with the information.
+        """
         if df.empty:
             return ["", "", "", ""]
         elif extreme:
@@ -32,6 +62,15 @@ class Table:
             return ["", df.iloc[0]["VALUE"],  df.iloc[0]["NORMAL_CODE"],  ""]
 
     def get_all_data(self):
+        """
+        Loops through all the user elements and months to compile a dataframe containing all the data.
+
+        Parameters:
+        None
+
+        Returns: 
+        df: A dataframe that contains all the information that can be inputted into a table.
+        """
         df = pd.DataFrame(columns=self.headers)
         df_81 = pd.DataFrame(columns=self.headers)
         df_91 = pd.DataFrame(columns=self.headers)
