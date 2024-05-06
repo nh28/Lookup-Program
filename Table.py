@@ -13,12 +13,12 @@ class Table:
         user_elements: A list of elements that the user selected.
         user_months: A list of months that the user selected.
         """
-        self.headers = ['STN ID', 'STN/LOC NAME', 'CLIMATE ID', 'PROV', 'NORMAL ID', 'ELEMENT NAME', 'Month', '1971-2000', 'Value (71)', 'Code (71)', 'Date (71)', '1981-2010', 'Value (81)', 'Code (81)', 'Date (81)','1991-2020', 'Value (91)', 'Code (91)', 'Date (91)']
+        self.headers = ['STN ID', 'STN/LOC NAME', 'CLIMATE ID', 'PROV', 'NORMAL ID', 'ELEMENT NAME', 'Month', 'Value (71)', 'Code (71)', 'Date (71)', 'Value (81)', 'Code (81)', 'Date (81)', 'Value (91)', 'Code (91)', 'Date (91)']
         self.arkeon = arkeon
         self.user_station = user_station
         self.user_elements = user_elements
         self.user_months = user_months
-        self.extreme_el = self.arkeon.get_extreme_el() #double check these are all the values that count as extreme
+        self.extreme_el = self.arkeon.get_extreme_el()
         try:
             self.workbook = openpyxl.load_workbook('StationList.xlsx')
             self.worksheet = self.workbook["Sheet1"]
@@ -55,11 +55,11 @@ class Table:
         A formatted list with the information.
         """
         if df.empty:
-            return ["", "", "", ""]
+            return [ "", "", ""]
         elif extreme:
-            return ["", df.iloc[0]["VALUE"],  df.iloc[0]["NORMAL_CODE"],  df.iloc[0]["FIRST_OCCURRENCE_DATE"]]
+            return [ df.iloc[0]["VALUE"],  df.iloc[0]["NORMAL_CODE"],  df.iloc[0]["FIRST_OCCURRENCE_DATE"]]
         else:
-            return ["", df.iloc[0]["VALUE"],  df.iloc[0]["NORMAL_CODE"],  ""]
+            return [ df.iloc[0]["VALUE"],  df.iloc[0]["NORMAL_CODE"],  ""]
 
     def get_all_data(self):
         """
@@ -90,7 +90,7 @@ class Table:
             for element in self.user_elements:
                 for month in self.user_months:
                     normal_id = self.arkeon.get_normals_element_id(element)
-                    if normal_id in self.extreme_el:
+                    if element in self.extreme_el:
                         extreme = True
                     else:
                         extreme = False
@@ -113,29 +113,29 @@ class Table:
                             row_df = pd.DataFrame([row], columns = self.headers)
                             df = pd.concat([df, row_df], ignore_index=False)
                         else:
-                            row = [id_7181, name_7181, climate_id, prov, normal_id, element, month] + data_71 + data_81 + ["","","",""]
+                            row = [id_7181, name_7181, climate_id, prov, normal_id, element, month] + data_71 + data_81 + ["","",""]
                             row_df = pd.DataFrame([row], columns = self.headers)
                             df = pd.concat([df, row_df], ignore_index=False)
                     elif exist_71 != None and exist_71 != "":
                         if id_91 != None and id_91 != "":
-                            row = [id_7181, name_7181, "", prov, normal_id, element, month] + data_71 + ["","","",""] + data_91
+                            row = [id_7181, name_7181, "", prov, normal_id, element, month] + data_71 + ["","",""] + data_91
                             row_df = pd.DataFrame([row], columns = self.headers)
                             df = pd.concat([df, row_df], ignore_index=False)
                         else:
-                            row = [id_7181, name_7181, "", prov, normal_id, element, month] + data_71 + ["","","",""] + ["","","",""]
+                            row = [id_7181, name_7181, "", prov, normal_id, element, month] + data_71 + ["","",""] + ["","",""]
                             row_df = pd.DataFrame([row], columns = self.headers)
                             df = pd.concat([df, row_df], ignore_index=False)
                     elif exist_81 != None and exist_81 != "":
                         if id_91 != None and id_91 != "":
-                            row = [id_7181, name_7181, climate_id, prov, normal_id, element, month] + ["","","",""] + data_81 + data_91
+                            row = [id_7181, name_7181, climate_id, prov, normal_id, element, month] + ["","",""] + data_81 + data_91
                             row_df = pd.DataFrame([row], columns = self.headers)
                             df_81 = pd.concat([df_81, row_df], ignore_index=False)
                         else:
-                            row = [id_7181, name_7181, climate_id, prov, normal_id, element, month] + ["","","",""] + data_81 + ["","","",""]
+                            row = [id_7181, name_7181, climate_id, prov, normal_id, element, month] + ["","",""] + data_81 + ["","",""]
                             row_df = pd.DataFrame([row], columns = self.headers)
                             df_81 = pd.concat([df_81, row_df], ignore_index=False)
                     elif id_91 != None and id_91 != "":
-                        row = [id_91, name_91, "", prov, normal_id, element, month] + ["","","",""] + ["","","",""] + data_91
+                        row = [id_91, name_91, "", prov, normal_id, element, month] + ["","",""] + ["","",""] + data_91
                         row_91_df = pd.DataFrame([row], columns = self.headers)
                         df_91 = pd.concat([df_91, row_91_df], ignore_index=False)
         if not df_81.empty: 
