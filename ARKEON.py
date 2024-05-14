@@ -88,7 +88,7 @@ class ARKEON:
 
         return pd.DataFrame(columns_data)
     
-    def get_normals_element_id(self, element):
+    def get_normals_element_id(self, element, normals):
         """
         Finds the corresponding normal id for the given element.
 
@@ -98,8 +98,7 @@ class ARKEON:
         Returns:
         return row['NORMAL_ID']: This is the corresponding normal id for the element. If the element is not found, the program will return -1.
         """
-        normals = self.get_dataframe(['NORMAL_ID', 'E_NORMAL_ELEMENT_NAME'], 'NORMALS_1991.valid_normals_elements', [], False)
-
+    
         for index, row in normals.iterrows():
             if element in row['E_NORMAL_ELEMENT_NAME']:
                 return row['NORMAL_ID']

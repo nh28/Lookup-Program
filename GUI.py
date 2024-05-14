@@ -23,6 +23,15 @@ def create_selection_window():
     return gui.Window('Selection', selection_layout, resizable=True)
 
 def populate_table():
+    """
+    Returns a dataframe for the table based on what elements are selected.
+
+    Parameters: 
+    None
+
+    Returns:
+    A dataframe.
+    """
     filter_el = values['-SELECTED_ELEMENTS-']
     selected_elements = window['-SELECTED_ELEMENTS-'].get_list_values()
 
@@ -33,7 +42,6 @@ def populate_table():
     filter_mo = values['-DROPDOWN_MONTHS-']
     filtered_df = filtered_df[filtered_df['Month'].isin(filter_mo)]
     return filtered_df
-
 
 arkeon = ARKEON()
 downloads_folder = os.path.join(os.path.expanduser('~'), 'Downloads')
@@ -69,11 +77,14 @@ while True:
 
 if login:
     user_station = None
-    user_elements = None
-    user_months = None
     all_stations = arkeon.get_all_stations()
     all_elements = arkeon.get_all_elements()
     all_months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+
+    popup_id = gui.popup_non_blocking('Loading Data...This window will close automatically', auto_close=True, auto_close_duration=2)
+    df_71 = pd.read_csv('data_1971.csv') #arkeon.get_dataframe(['STN_ID', 'NORMAL_ID', 'MONTH', 'VALUE', 'FIRST_OCCURRENCE_DATE', 'NORMAL_CODE'], 'NORMALS.NORMALS_DATA',[], False)
+    df_81 = pd.read_csv('data_1981.csv') #arkeon.get_dataframe(['STN_ID', 'NORMAL_ID', 'MONTH', 'VALUE', 'FIRST_OCCURRENCE_DATE', 'NORMAL_CODE'], 'NORMALS_1981.NORMALS_DATA', [], False)
+    df_91 = arkeon.get_dataframe(['STN_ID', 'NORMAL_ID', 'MONTH', 'VALUE', 'FIRST_OCCURRENCE_DATE', 'NORMAL_CODE'], 'NORMALS_1991.NORMALS_DATA', [], False)
 
     selection_window = create_selection_window()
 
@@ -95,23 +106,23 @@ if login:
             user_station = values['-STATION_INPUT-']
             
             if user_station:
-                selection_window.close()        
-                popup_id = gui.popup_non_blocking('Loading Data...This window will close automatically', auto_close=True, auto_close_duration=2)
-                table = Table(arkeon, user_station, all_elements, all_months)
-                df = table.get_all_data()
+                selection_window.close() 
+                popup_id = gui.popup_non_blocking('Loading Station Data...This window will close automatically', auto_close=True, auto_close_duration=2)       
+                table = Table(arkeon, all_elements, all_months)
+                df = table.get_all_data(user_station, df_71, df_81, df_91)
                 data_rows = df.values.tolist()
                 
                 filter_layout = [
                     [gui.Text('Elements:')],
                     [gui.InputText(key="-ELEMENT_INPUT-", enable_events=True)],     
                     [gui.Listbox(values=all_elements, size=(60, 7), enable_events=True, key='-ALL_ELEMENTS-', select_mode='single'), gui.Listbox(values=[], size=(60, 7), enable_events=True, select_mode='multiple', key='-SELECTED_ELEMENTS-')],
-                    [gui.Button('Add All', key="-SELECT_ALL_EL-"), gui.Button('Remove All', key ="-UNSELECT_ALL_EL-")],
+                    [gui.Button('Add All', key="-SELECT_ALL_EL-"), gui.Text("                                                                                             "), gui.Button('Remove All', key ="-UNSELECT_ALL_EL-"), gui.Button('Remove Selected', key ="-UNSELECT_SELECTED_EL-")],
                     [gui.Text('Months:')],
                     [gui.Listbox(values=all_months, size=(60, 7), enable_events=True, key='-DROPDOWN_MONTHS-', select_mode='multiple')],
                     [gui.Button('Select All', key="-SELECT_ALL_MO-"), gui.Button('Unselect All', key="-UNSELECT_ALL_MO-")],
                     [gui.Text("Metadata                                                                                                                                                                    1971-2000                                                              1981-2010                                                              1991-2020")],
-                    [gui.Table(values=[], headings=df.columns.tolist(), display_row_numbers=False, auto_size_columns=True, key='-TABLE-', enable_events=False)],
-                    [gui.Text("Sorting:"), gui.Button("Normal ID Ascending", key = "-NORMIDA-"), gui.Button("Normal ID Descending", key = "-NORMIDD-"), gui.Button("1971 Values Ascending", key = "-ASCENDING71-"), gui.Button("1971 Values Descending", key = "-DESCENDING71-"),  gui.Button("1981 Values Ascending", key = "-ASCENDING81-"), gui.Button("1981 Values Descending", key = "-DESCENDING81-"), gui.Button("1991 Values Ascending", key = "-ASCENDING91-"), gui.Button("1991 Values Descending", key = "-DESCENDING91-"), gui.Button("Revert to Original", key = "-REVERT-")],
+                    [gui.Table(values=[], headings=['Metadata', ' ', ' ', ' ', ' ', ' ', ' ', '1971-2000', ' ', ' ', '1981-2010', ' ', ' ', '1991-2020', ' ', ' '], display_row_numbers=False, auto_size_columns=True, key='-TABLE-', enable_events=False)],
+                    [gui.Text("Sorting:"), gui.Listbox(values=['NORMAL ID', "Value (71)", 'Value (81)', 'Value (91)'], size=(60, 7), enable_events=True, key='-SORT_FACTORS-', select_mode='single'), gui.Button("Ascending", key = "-DESCENDING-"), gui.Button("Descending", key = "-DESCENDING-"), gui.Button("Revert to Original", key = "-REVERT-")],
                     [gui.Button("Download CSV", key = "-CSV-"), gui.Button("Download xlsx", key = "-XLSX-")],
                     [gui.Button("Choose another station", key = "-BACK-")]
                     
@@ -129,9 +140,11 @@ if login:
                         window_open = False
                         break
                     if event == "-BACK-":
-                        window.close()
-                        window_open = False
-                        selection_window = create_selection_window()
+                        confirm_back = gui.popup_yes_no("Are you sure you want to go back?", title="Warning")
+                        if confirm_back == "Yes":
+                            window.close()
+                            window_open = False
+                            selection_window = create_selection_window()
 
                     if event == '-ELEMENT_INPUT-':
                         typed_text = values['-ELEMENT_INPUT-'].lower()
@@ -152,73 +165,45 @@ if login:
                         window['-DROPDOWN_MONTHS-'].update(set_to_index=list(range(13)))
                     if event == '-UNSELECT_ALL_EL-':
                         window['-SELECTED_ELEMENTS-'].update(values=[])
+                    if event == '-UNSELECT_SELECTED_EL-':
+                        selected_elements = values['-SELECTED_ELEMENTS-']
+                        all_el = window['-SELECTED_ELEMENTS-'].get_list_values()
+                        all_el = [item for item in all_el if item not in selected_elements]
+                        window['-SELECTED_ELEMENTS-'].update(values=all_el)
                     if event == '-UNSELECT_ALL_MO-':
                         window['-DROPDOWN_MONTHS-'].update(values=all_months)
                     
                     if event == '-SELECTED_ELEMENTS-' or '-DROPDOWN_MONTHS-' or '-ALL_ELEMENTS-': 
                         if window_open:
-                            window['-TABLE-'].update(values=populate_table().values.tolist())
-
-                    if event == "-NORMIDA-":
-                        sorted_df = df.sort_values(by='NORMAL ID')
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-NORMIDD-":
-                        sorted_df = df.sort_values(by='NORMAL ID', ascending=False)
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-ASCENDING71-":
-                        filtered_df = populate_table()
-                        empty_df = filtered_df[filtered_df['Value (71)'] == ''].copy()
-                        sorted_df = filtered_df[filtered_df['Value (71)'] != ''].copy()
-                        sorted_df['Value (71)'] = sorted_df['Value (71)'].astype(int)
-                        sorted_df = sorted_df.sort_values(by='Value (71)')
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-DESCENDING71-":
-                        filtered_df = populate_table()
-                        empty_df = filtered_df[filtered_df['Value (71)'] == ''].copy()
-                        sorted_df = filtered_df[filtered_df['Value (71)'] != ''].copy()
-                        sorted_df['Value (71)'] = sorted_df['Value (71)'].astype(int)
-                        sorted_df = sorted_df.sort_values(by='Value (71)', ascending=False)
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-ASCENDING81-":
-                        filtered_df = populate_table()
-                        empty_df = filtered_df[filtered_df['Value (81)'] == ''].copy()
-                        sorted_df = filtered_df[filtered_df['Value (81)'] != ''].copy()
-                        sorted_df['Value (81)'] = sorted_df['Value (81)'].astype(int)
-                        sorted_df = sorted_df.sort_values(by='Value (81)')
-                        if window_open:    
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-DESCENDING81-":
-                        filtered_df = populate_table()
-                        empty_df = filtered_df[filtered_df['Value (81)'] == ''].copy()
-                        sorted_df = filtered_df[filtered_df['Value (81)'] != ''].copy()
-                        sorted_df['Value (81)'] = sorted_df['Value (81)'].astype(int)
-                        sorted_df = sorted_df.sort_values(by='Value (81)', ascending=False)
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-ASCENDING91-":
-                        filtered_df = populate_table()
-                        empty_df = filtered_df[filtered_df['Value (91)'] == ''].copy()
-                        sorted_df = filtered_df[filtered_df['Value (91)'] != ''].copy()
-                        sorted_df['Value (91)'] = sorted_df['Value (91)'].astype(int)
-                        sorted_df = sorted_df.sort_values(by='Value (91)')
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
-                    if event == "-DESCENDING91-":
-                        filtered_df = populate_table()
-                        empty_df = filtered_df[filtered_df['Value (91)'] == ''].copy()
-                        sorted_df = filtered_df[filtered_df['Value (91)'] != ''].copy()
-                        sorted_df['Value (91)'] = sorted_df['Value (91)'].astype(int)
-                        sorted_df = sorted_df.sort_values(by='Value (91)', ascending=False)
-                        sorted_df = df.sort_values(by='Value (91)', ascending=False)
-                        if window_open:
-                            window['-TABLE-'].update(values=sorted_df.values.tolist())
+                            data = populate_table()
+                            window['-TABLE-'].update(values=[data.columns.tolist()] + data.values.tolist())
+                    
+                    if event == "-ASCENDING-":
+                        sort_by = values['-SORT_FACTORS-'][0]
+                        if sort_by != None:
+                            filtered_df = populate_table()
+                            empty_df = filtered_df[filtered_df[sort_by] == ''].copy()
+                            non_empty_df = filtered_df[filtered_df[sort_by] != ''].copy()
+                            non_empty_df[sort_by] = non_empty_df[sort_by].astype(float)
+                            sorted_df = non_empty_df.sort_values(by=sort_by)
+                            # sorted_df = pd.concat([sorted_df, empty_df], ignore_index=False)
+                            if window_open:
+                                window['-TABLE-'].update(values=[sorted_df.columns.tolist()] + sorted_df.values.tolist())
+                    if event == "-DESCENDING-":
+                        sort_by = values['-SORT_FACTORS-'][0]
+                        if sort_by != None:
+                            filtered_df = populate_table()
+                            empty_df = filtered_df[filtered_df[sort_by] == ''].copy()
+                            non_empty_df = filtered_df[filtered_df[sort_by] != ''].copy()
+                            non_empty_df[sort_by] = non_empty_df[sort_by].astype(float)
+                            sorted_df = non_empty_df.sort_values(by=sort_by, ascending=False)
+                            sorted_df = pd.concat([sorted_df, empty_df], ignore_index=False)
+                            if window_open:
+                                window['-TABLE-'].update(values=[sorted_df.columns.tolist()] + sorted_df.values.tolist())
                     if event == "-REVERT-":
                         if window_open:
-                            window['-TABLE-'].update(values=populate_table().values.tolist())
+                            data = populate_table()
+                            window['-TABLE-'].update(values=[data.columns.tolist()] + data.values.tolist())
 
                     if event == "-CSV-":
                         name = user_station + ".csv"
