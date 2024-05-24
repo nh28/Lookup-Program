@@ -44,7 +44,7 @@ If using PortableGit, in order to be able to pip you need to open the command pr
 ## Name Requirements
 - [ ] Input
 	- [ ] StationList.xlsx
-    - [ ] stations_data.csv
+    - [ ] stations_data.csv (not included here)
 - [ ] Py files
 	- [ ] ARKEON.py
 	- [ ] DataFrameTable.py
