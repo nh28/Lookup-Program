@@ -78,7 +78,6 @@ class ARKEON:
             except Exception as err:
                 msg = 'Unable to execute query, due to: %s' % str(err)
                 logging.error(msg)
-            logging.info('Query execution complete.')
         else:
             logging.error('Unable to execute query, due to: no cursor.')
             
@@ -114,7 +113,7 @@ class ARKEON:
 
     def get_all_stations(self):
         """
-        Compiles a list of all the stations from 1971, 1981, and 1991
+        Compiles a list of all the stations from 1971, 1981, and 1991.
 
         Parameters: 
         None
@@ -126,15 +125,15 @@ class ARKEON:
         for row_idx in range(3, self.worksheet.max_row):
             name_7181 = self.worksheet.cell(row = row_idx, column = 2).value
             name_91 = self.worksheet.cell(row = row_idx, column = 7).value
-            if name_91 != None and name_91 != "" :
-                all_stations.append(name_91)
-            elif name_7181 != None and name_7181 != "":
+            if name_7181 != None and name_7181 != "":
                 all_stations.append(name_7181)
+            elif name_91 != None and name_91 != "" :
+                all_stations.append(name_91)
         return sorted(all_stations)
     
     def get_all_elements(self):
         """
-        Compiles a list of all the elements from 1971, 1981, and 1991
+        Compiles a list of all the elements from 1971, 1981, and 1991.
 
         Parameters: 
         None

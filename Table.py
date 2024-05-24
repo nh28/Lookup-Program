@@ -1,5 +1,4 @@
 import logging
-import pandas as pd
 import openpyxl
 
 class Table:
@@ -12,7 +11,6 @@ class Table:
         user_elements: A list of elements that the user selected.
         user_months: A list of months that the user selected.
         """
-        self.headers = ['STN ID', 'STN/LOC NAME', 'CLIMATE ID', 'PROV', 'NORMAL ID', 'ELEMENT NAME', 'Month', 'Value (71)', 'Code (71)', 'Date (71)', 'Value (81)', 'Code (81)', 'Date (81)', 'Value (91)', 'Code (91)', 'Date (91)']
         self.arkeon = arkeon
         self.user_elements = user_elements
         self.user_months = user_months
@@ -68,11 +66,11 @@ class Table:
         None
 
         Returns: 
-        df: A dataframe that contains all the information that can be inputted into a table.
+        list: A list with all the data.
         """
-        df = []
-        df_81 = []
-        df_91 = []
+        list = []
+        list_81 = []
+        list_91 = []
         
         row_idx = self.check_station_availability(station)
         if row_idx is not None:
@@ -108,17 +106,13 @@ class Table:
                     row += data_71 + data_81 + data_91
 
                     if exist_71:
-                        df.append(row)
+                        list.append(row)
                     elif exist_81:
-                        df_81.append(row)
+                        list_81.append(row)
                     elif id_91:
                         row = [id_91, name_91, "", prov, normal_id, element, month] + data_71 + data_81 + data_91
-                        df_91.append(row)
+                        list_91.append(row)
 
-        df = pd.DataFrame(df, columns=self.headers)
-        df_81 = pd.DataFrame(df_81, columns=self.headers)
-        df_91 = pd.DataFrame(df_91, columns=self.headers)
-
-        df = pd.concat([df, df_81, df_91], ignore_index=True)
-        return df
+        list = list + list_81 + list_91 
+        return list
         

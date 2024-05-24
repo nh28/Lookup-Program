@@ -1,227 +1,394 @@
+import logging
 import os
-import time
 import tkinter as tk
-from tkinter import BooleanVar, Button, Checkbutton, Listbox, Scrollbar, messagebox, ttk
-from ttkwidgets.autocomplete import AutocompleteCombobox
+from tkinter import BooleanVar, Button, Listbox, messagebox, ttk
 from ARKEON import ARKEON
 import pandas as pd
-import threading
 from DataFrameTable import DataFrameTable
-from Table import Table
 
-def login():
-    username = username_entry.get()
-    password = password_entry.get()
-    global arkeon 
-    arkeon = ARKEON()
-    if arkeon.connect(username, password):
-        show_station_screen()
-    else:
-        messagebox.showerror("Login Failed", "Invalid username or password")
+logging.basicConfig(filename='error.log', level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def show_station_screen():
-    if 'login_screen' in globals() and login_screen.winfo_exists():
-        login_screen.destroy()
-   
-    messagebox.showinfo(title=None, message='Data is loading...please press ok to start the loading process.')
-    
-    try:
-        global df_71
-        df_71 = pd.read_csv('data_1971.csv')
-        global df_81
-        df_81 = pd.read_csv('data_1981.csv')
-        global df_91
-        df_91 = arkeon.get_dataframe(['STN_ID', 'NORMAL_ID', 'MONTH', 'VALUE', 'FIRST_OCCURRENCE_DATE', 'NORMAL_CODE'], 'NORMALS_1991.NORMALS_DATA', [], False)
-    except Exception as e:
-        messagebox.showerror(title='Error', message=str(e))
-    
-    global all_stations
-    all_stations = arkeon.get_all_stations()
-    global all_elements
-    all_elements = arkeon.get_all_elements()
-    global all_months 
-    all_months= [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    create_station_screen()
 
-def create_station_screen():
-    if 'station_data_screen' in globals() and station_data_screen.winfo_exists():
-        station_data_screen.destroy()
+class TkinterGUI:
+    def __init__(self, root):
+        """
+        Initialize a new instance of TkinterGUI.
 
-    global station_screen 
-    station_screen= tk.Tk()
-    station_screen.title("Station Screen")
-    
-    global entry
-    entry = tk.Entry(station_screen)
-    entry.pack(fill=tk.X, padx=10, pady=5)
-    entry.bind("<KeyRelease>", filter_stations)
+        Parameters:
+        self: The instance of the TkinterGUI.
+        root: The initial frame created for the Login page.
+        """
+        self.root = root
+        self.root.title("Login")
+        self.root.geometry("400x200")
+        self.create_login_screen()
 
-    global stations
-    stations = tk.Listbox(station_screen, width=50, height=10)
-    stations.pack(padx=10, pady=5)
+    def create_login_screen(self):
+        """
+        Sets up the Login screen with username and password entry's, as well as a Login button.
 
-    for station in all_stations:
-        stations.insert(tk.END, station)
-    stations.selection_set(first=0)
+        Parameters:
+        self: The instance of the TkinterGUI.
 
-    go_button = tk.Button(station_screen, text="Go", command=lambda: on_select(stations.get(tk.ACTIVE), df_71, df_81, df_91))
-    go_button.pack(pady=10)
-    station_screen.mainloop()
+        Returns:
+        None
+        """
+        tk.Label(self.root, text="Username:").pack(pady=10)
+        self.username_entry = tk.Entry(self.root)
+        self.username_entry
+        self.username_entry.pack()
 
-def filter_stations(event=None):
-    keyword = entry.get().lower()
-    
-    stations.delete(0, tk.END)
-    
-    for station in all_stations:
-        if keyword in station.lower():
-            stations.insert(tk.END, station)
+        tk.Label(self.root, text="Password:").pack(pady=10)
+        self.password_entry = tk.Entry(self.root, show="*")
+        self.password_entry.pack()
 
-def on_select(station, df_71, df_81, df_91):
-    station_screen.destroy()
+        tk.Button(self.root, text="Login", command=self.login).pack(pady=20)
 
-    global user_station
-    user_station = station
-    messagebox.showinfo(title=None, message='Station data is loading...please press ok to start the loading process.')
-    try:
-        table = Table(arkeon, all_elements, all_months)
-        global df
-        df = table.get_all_data(station, df_71, df_81, df_91)
-        show_station_data()
-    except Exception as e:
-        messagebox.showerror(title='Error', message=str(e))
+    def login(self):
+        """
+        Validates the users credentials using ARKEON.
 
-def show_station_data():
-    global station_data_screen 
-    station_data_screen= tk.Tk()
-    station_data_screen.title("Station Screen")
+        Parameters:
+        self: The instance of the TkinterGUI.
 
-    widgets_frame = ttk.LabelFrame(station_data_screen, text="Customize station data")
-    widgets_frame.grid(row=0, column=0)
+        Returns:
+        None
+        """
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+        self.arkeon = ARKEON()
+        if self.arkeon.connect(username, password):
+            self.load_data()
+        else:
+            logging.error("Login Failed", "Invalid username or password")
+            messagebox.showerror("Login Failed", "Invalid username or password")
 
-    global station
-    station = "station"
-    global element_entry
-    element_entry = Listbox(widgets_frame, width= 50, selectmode="multiple", exportselection=0)
-    element_entry.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-    for value in all_elements:
-        element_entry.insert(tk.END, value)
+    def load_data(self):
+        """
+        Loads all the stations data from 1971, 1981, and 1991 (all in a csv file).
 
-    global a
-    a= BooleanVar()
-    all_el = ttk.Checkbutton(widgets_frame, text="All Elements", variable=a, command=select_all_el)
-    all_el.grid(row=1, column=0, padx=5, pady=10, sticky="ew")
-    
-    scrollbar = ttk.Scrollbar(widgets_frame, orient="vertical", command=on_vertical_scroll)
-    scrollbar.grid(row=0, column=1, sticky="ns")
-    element_entry.config(yscrollcommand=scrollbar.set)
+        Parameters:
+        self: The instance of the TkinterGUI.
 
-    global month_entry
-    month_entry = Listbox(widgets_frame, width= 10, selectmode="multiple", exportselection=0)
-    month_entry.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-    for value in all_months:
-        month_entry.insert(tk.END, value)
+        Returns:
+        None
+        """
+        self.root.destroy()
+        messagebox.showinfo(title=None, message='Data is loading...please press ok to start the loading process.')
+        
+        try:
+           self.all_station_data = pd.read_csv("stations_data.csv")
+        except Exception as e:
+            logging.error("Error:" + str(e))
+            messagebox.showerror(title='Error', message=str(e))
+            return
 
-    global b
-    b = BooleanVar()
-    all_mo = ttk.Checkbutton(widgets_frame, text="All Months", variable=b, command=select_all_mo)
-    all_mo.grid(row=1, column=1, padx=5, pady=10, sticky="ew")
+        self.all_stations = self.arkeon.get_all_stations()
+        self.all_elements = self.arkeon.get_all_elements()
+        self.all_months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 
-    update_button = Button(widgets_frame, text='Update', command=update)
-    update_button.grid(row=2, column=0, padx=5, pady=5, sticky='nsew')
+        self.create_station_screen()
 
-    download_frame = ttk.LabelFrame(station_data_screen, text="Download")
-    download_frame.grid(row=1, column=0, pady=10)
-    global c, d
-    c= BooleanVar()
-    d = BooleanVar()
-    excel = Checkbutton(download_frame, text="XLSX", variable=c) 
-    excel.grid(row=0, column=0, padx=5, pady=5, sticky='nsew')
-    csv = Checkbutton(download_frame, text="CSV", variable=d)
-    csv.grid(row=0, column=1, padx=5, pady=5, sticky='nsew')
+    def create_station_screen(self):
+        """
+        Sets up the Station screen that allows the user to choose which station they would like to select.
 
-    download_button = Button(download_frame, text='Download', command=download)
-    download_button.grid(row=0, column=2, padx=5, pady=5, sticky='nsew')
+        Parameters:
+        self: The instance of the TkinterGUI.
 
-    tree_frame = ttk.LabelFrame(station_data_screen, text="Station Data")
-    tree_frame.grid(row=0, column=1, pady=40)
-    tree_scroll = Scrollbar(tree_frame)
-    tree_scroll.pack(side='right', fill='y')
+        Returns:
+        None
+        """
+        self.root = tk.Tk()
+        self.root.title("Station Screen")
 
-    header_text = "Metadata                                                                                        1971-2000                                     1981-2010                                     1991-2020"
-    header = ttk.Label(tree_frame, text=header_text)
-    header.pack()
-    global frame 
-    frame = DataFrameTable(tree_frame, dataframe=df)
-    frame.pack(expand=True, fill="both")
-    add_scrollbar(frame.tree, tree_scroll)
-    reset_button = ttk.Button(tree_frame, text="Reset Spacing", command=frame.reset)
-    reset_button.pack()
-    back_button = ttk.Button(tree_frame, text="Choose another station", command=back)
-    back_button.pack()
+        tk.Label(self.root, text="Filter Stations:").pack(pady=10)
+        self.entry = tk.Entry(self.root)
+        self.entry.pack(fill=tk.X, padx=10, pady=5)
+        self.entry.bind("<KeyRelease>", self.filter_stations)
 
-def on_vertical_scroll(*args):
-    element_entry.yview(*args)
+        self.stations = tk.Listbox(self.root, width=50, height=10)
+        self.stations.pack(padx=10, pady=5)
 
-def download():
-    downloads_folder = os.path.join(os.path.expanduser('~'), 'Downloads')
-    if c.get():
-        name = user_station + ".xlsx"
-        excel_file_path = os.path.join(downloads_folder, name)
-        df.to_excel(excel_file_path, index=False)
-    if d.get():
-        name = user_station + ".csv"
-        csv_file_path = os.path.join(downloads_folder, name)
-        df.to_csv(csv_file_path, index=False)
+        for station in self.all_stations:
+            self.stations.insert(tk.END, station)
+        self.stations.selection_set(first=0)
 
-def update():
-    selected_elements = element_entry.curselection()
-    highlighted_elements = [element_entry.get(index) for index in selected_elements]
-    
-    selected_months = month_entry.curselection()
-    highlighted_months = [month_entry.get(index) for index in selected_months]
-    
-    filtered_df = df[df['ELEMENT NAME'].isin(highlighted_elements)]
-    filtered_df = filtered_df[filtered_df['Month'].isin(highlighted_months)]
-    frame.update_dataframe(filtered_df)
+        tk.Button(self.root, text="Go", command=self.on_select).pack(pady=10)
+        self.root.mainloop()
 
-def select_all_el():
-    if a.get():
-        element_entry.selection_set(0, 'end')
-    else:
-        element_entry.selection_clear(0, 'end')
+    def filter_stations(self, event):
+        """
+        Filters the stations shown in the Listbox depending on what the user started to type in the entry box.
 
-def select_all_mo():
-    if b.get():
-        month_entry.selection_set(0, 'end')
-    else:
-        month_entry.selection_clear(0, 'end')
+        Parameters:
+        self: The instance of the TkinterGUI.
+        event: The event object representing the key release event.
 
-def add_scrollbar(widget, scrollbar):
-    widget.config(yscrollcommand=scrollbar.set)
-    scrollbar.config(command=widget.yview)  
+        Returns:
+        None
+        """
+        keyword = self.entry.get().lower()
+        self.stations.delete(0, tk.END)
+        for station in self.all_stations:
+            if keyword in station.lower():
+                self.stations.insert(tk.END, station)
 
-def back():
-    confirmation = messagebox.askyesno(title="Go back?", message="Do you want to choose another station? If so, this data will be lost.")
-    if confirmation:
-        create_station_screen()
+    def on_select(self):
+        """
+        Creates a dataframe of the chosen station's data.
 
-# login screen
-login_screen = tk.Tk()
-login_screen.title("Login")
-login_screen.geometry("400x200")
+        Parameters:
+        self: The instance of the TkinterGUI.
 
-username_label = tk.Label(login_screen, text="Username:")
-username_label.pack(pady=10)
-username_entry = tk.Entry(login_screen)
-username_entry.pack()
+        Returns:
+        None
+        """
+        station = self.stations.get(tk.ACTIVE)
+        self.user_station = station
+        try:
+            self.df = self.all_station_data[self.all_station_data['STN/LOC NAME'] == self.user_station]
+            self.df = self.df.fillna("")
+            self.show_station_data()
+        except Exception as e:
+            logging.error("Error:" + str(e))
+            messagebox.showerror(title='Error', message=str(e))
 
-password_label = tk.Label(login_screen, text="Password:")
-password_label.pack(pady=10)
-password_entry = tk.Entry(login_screen, show="*")
-password_entry.pack()
+    def show_station_data(self):
+        """
+        Creates the station data screen which will be able to contain all the elements for the user to see.
 
-login_button = tk.Button(login_screen, text="Login", command=login)
-login_button.pack(pady=20)
+        Parameters:
+        self: The instance of the TkinterGUI.
 
-login_screen.mainloop()
+        Returns:
+        None
+        """
+        self.station_data_screen = tk.Toplevel()
+        self.station_data_screen.title("Station Data Screen")
+
+        self.station_data_screen.grid_columnconfigure(0, weight=1)
+        self.station_data_screen.grid_columnconfigure(1, weight=3)
+        self.station_data_screen.grid_rowconfigure(0, weight=3)
+        self.station_data_screen.grid_rowconfigure(1, weight=1)
+        
+        self.create_widgets_frame()
+        self.create_download_frame()
+        self.create_tree_frame()
+
+    def create_widgets_frame(self):
+        """
+        Creates the widgets frame that allows the user to select stations or elements they would like to view.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """
+        widgets_frame = ttk.LabelFrame(self.station_data_screen, text="Customize station data")
+        widgets_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        widgets_frame.grid_columnconfigure(0, weight=1)
+        widgets_frame.grid_columnconfigure(1, weight=3)
+        widgets_frame.grid_columnconfigure(2, weight=0)
+        widgets_frame.grid_rowconfigure(0, weight=1)
+        widgets_frame.grid_rowconfigure(1, weight=0)
+        widgets_frame.grid_rowconfigure(2, weight=0)
+
+        self.month_entry = Listbox(widgets_frame, height=13, width=25, selectmode="multiple", exportselection=0)
+        self.month_entry.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        for value in self.all_months:
+            self.month_entry.insert(tk.END, value)
+
+        self.b = BooleanVar()
+        all_mo = ttk.Checkbutton(widgets_frame, text="All Months", variable=self.b, command=self.select_all_mo)
+        all_mo.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
+
+        self.element_entry = Listbox(widgets_frame, height=25, width=55, selectmode="multiple", exportselection=0)
+        self.element_entry.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        for value in self.all_elements:
+            self.element_entry.insert(tk.END, value)
+
+        self.a = BooleanVar()
+        all_el = ttk.Checkbutton(widgets_frame, text="All Elements", variable=self.a, command=self.select_all_el)
+        all_el.grid(row=1, column=1, padx=5, pady=10, sticky="nsew")
+
+        scrollbar = ttk.Scrollbar(widgets_frame, orient="vertical", command=self.on_vertical_scroll)
+        scrollbar.grid(row=0, column=2, sticky="ns")
+        self.element_entry.config(yscrollcommand=scrollbar.set)
+
+        update_button = Button(widgets_frame, text='Update', command=self.update)
+        update_button.grid(row=2, column=0, padx=5, pady=5, sticky='nsew')
+
+    def create_download_frame(self):
+        """
+        Creates the download frame that allows the user to download the xlsx or csv file of the data.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """  
+        download_frame = ttk.LabelFrame(self.station_data_screen, text="Download")
+        download_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+        download_frame.grid_columnconfigure(0, weight=1)
+        download_frame.grid_columnconfigure(1, weight=1)
+        download_frame.grid_rowconfigure(0, weight=1)
+        download_frame.grid_rowconfigure(1, weight=1)
+        
+        self.c = BooleanVar()
+        self.d = BooleanVar()
+        excel = ttk.Checkbutton(download_frame, text="XLSX", variable=self.c)
+        excel.grid(row=0, column=0, padx=5, pady=10, sticky='w')
+        
+        csv = ttk.Checkbutton(download_frame, text="CSV", variable=self.d)
+        csv.grid(row=0, column=1, padx=5, pady=10, sticky='w')
+        
+        download_button = Button(download_frame, text='Download', command=self.download)
+        download_button.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='ew')
+
+    def create_tree_frame(self):
+        """
+        Creates the tree frame with a table that displays all the data.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """
+        tree_frame = ttk.LabelFrame(self.station_data_screen, text="Station Data")
+        tree_frame.grid(row=0, column=1, rowspan=2, padx=10, pady=10, sticky="nsew")
+
+        tree_frame.grid_columnconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(1, weight=1)
+        tree_frame.grid_columnconfigure(2, weight=0)
+        tree_frame.grid_rowconfigure(0, weight=0)
+        tree_frame.grid_rowconfigure(1, weight=1)
+        tree_frame.grid_rowconfigure(2, weight=0)
+
+        header1 = ttk.Label(tree_frame, text="Metadata")
+        header1.grid(row=0, column=0, sticky='nsew')
+
+        header2 = ttk.Label(tree_frame, text="Normals Data")
+        header2.grid(row=0, column=1, sticky='ns')
+        
+        self.frame = DataFrameTable(tree_frame, dataframe=self.df)
+        self.frame.grid(row=1, column=0, columnspan=2, sticky='nsew')
+
+        tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.frame.tree.yview)
+        tree_scroll.grid(row=1, column=2, sticky='ns')
+        self.frame.tree.config(yscrollcommand=tree_scroll.set)
+
+        reset_spacing = ttk.Button(tree_frame, text="Reset Spacing", command=self.frame.reset_spacing)
+        reset_spacing.grid(row=2, column=0, sticky='ns')
+        reset_filter = ttk.Button(tree_frame, text="Reset Filters", command=self.frame.reset_filters)
+        reset_filter.grid(row=2, column=1, sticky='ns')
+
+    def on_vertical_scroll(self, *args):
+        """
+        Manages the element listbox's scroll feature.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+        *args: Allows a function to accept any number of positional arguments.
+
+        Returns:
+        None
+        """
+        self.element_entry.yview(*args)
+
+    def download(self):
+        """
+        Downloads either xlsx, csv, or both to the users Downloads folder on their device.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """
+        downloads_folder = os.path.join(os.path.expanduser('~'), 'Downloads')
+        if self.c.get():
+            name = self.user_station + ".xlsx"
+            excel_file_path = os.path.join(downloads_folder, name)
+            self.df.to_excel(excel_file_path, index=False)
+        if self.d.get():
+            name = self.user_station + ".csv"
+            csv_file_path = os.path.join(downloads_folder, name)
+            self.df.to_csv(csv_file_path, index=False)
+
+    def update(self):
+        """
+        Updates the table based on the elements and months the user selected.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """
+        selected_elements = self.element_entry.curselection()
+        highlighted_elements = [self.element_entry.get(index) for index in selected_elements]
+        
+        selected_months = self.month_entry.curselection()
+        highlighted_months = [self.month_entry.get(index) for index in selected_months]
+        
+        filtered_df = self.df[self.df['ELEMENT NAME'].isin(highlighted_elements)]
+        filtered_df = filtered_df[filtered_df['Month'].isin(highlighted_months)]
+        self.frame.update_dataframe(filtered_df)
+
+    def select_all_el(self):
+        """
+        Highlights all the elements when the user presses All Elements button.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """
+        if self.a.get():
+            self.element_entry.selection_set(0, 'end')
+        else:
+            self.element_entry.selection_clear(0, 'end')
+
+    def select_all_mo(self):
+        """
+        Highlights all the months when the user presses All Months button.
+
+        Parameters:
+        self: The instance of the TkinterGUI.
+
+        Returns:
+        None
+        """
+        if self.b.get():
+            self.month_entry.selection_set(0, 'end')
+        else:
+            self.month_entry.selection_clear(0, 'end')
+
+if __name__ == "__main__":
+    """
+    The main entry point for the Tkinter application.
+
+    This block checks if the script is being run as the main program and
+    not being imported as a module in another script. It initializes the
+    Tkinter root window and the TkinterGUI application, then starts the
+    Tkinter main event loop.
+
+    Classes:
+        TkinterGUI: The main class for the Tkinter application GUI.
+
+    Functions:
+        None
+
+    Usage:
+        Run this script directly to start the Tkinter application.
+    """
+    root = tk.Tk()
+    app = TkinterGUI(root)
+    root.mainloop()
